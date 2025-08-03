@@ -3,18 +3,20 @@ import { getUniqueMaterialNames } from './utils/getUniqueMaterialNames.js';
 
 export function setupMultiMaterialColorChanger(containerId = 'materialColorInputs') {
   const model = getCurrentModel();
-  if (!model) {
-    console.warn('Model not loaded.');
-    return;
-  }
-
-  const materialNames = getUniqueMaterialNames();
 
   const container = document.getElementById(containerId);
   if (!container) {
     console.warn(`Container with id '${containerId}' not found.`);
     return;
   }
+
+  if (!model) {
+    container.innerHTML = `<p style="color: gray; font-style: italic;">⚠️ Modelo no cargado. Espera unos segundos...</p>`;
+    console.warn('Model not loaded.');
+    return;
+  }
+  
+  const materialNames = getUniqueMaterialNames();
 
   // Clear previous inputs
   container.innerHTML = '';

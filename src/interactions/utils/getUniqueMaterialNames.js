@@ -2,10 +2,6 @@ import { getCurrentModel } from '../../loaders/loadModel.js';
 
 export function getUniqueMaterialNames() {
   const model = getCurrentModel();
-  if (!model) {
-    console.warn('No model loaded.');
-    return [];
-  }
 
   const materialNames = new Set();
 

@@ -5,6 +5,7 @@ import { setupLights } from './src/scene/setupLights.js';
 import { setupControls } from './src/controls/setupControls.js';
 import { setupHDRLoader } from './src/loaders/loadHDR.js';
 import { setupModelLoader } from './src/loaders/loadModel.js';
+import { setupMultiMaterialColorChanger } from './src/interactions/changeColor.js';
 import { setupTextureChanger } from './src/interactions/changeTexture.js';
 import { setupMaterialChanger } from './src/interactions/changeMaterial.js';
 
@@ -13,6 +14,7 @@ const controls = setupControls(camera, renderer);
 setupHDRLoader(scene, renderer);
 setupModelLoader(scene);
 
+setupMultiMaterialColorChanger();
 setupTextureChanger();
 setupMaterialChanger(scene);
 
