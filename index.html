@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Visor GLB Realista con cambio de color</title>
+  <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.140.0/build/three.module.js",
+      "three/examples/jsm/": "https://unpkg.com/three@0.140.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #fileInputs {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1;
+      background: rgba(255,255,255,0.9);
+      padding: 10px;
+      border-radius: 6px;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="fileInputs">
+    <label>Entorno HDR:</label>
+    <input type="file" id="hdrInput" accept=".hdr" /><br/><br/>
+    <label>Modelo GLB/GLTF:</label>
+    <input type="file" id="fileInput" accept=".gltf,.glb" /><br/><br/>
+    <label>Color de camisa:</label>
+    <input type="color" id="shirtColor" value="#1e90ff" /><br/><br/>
+    <label>Textura para la camisa:</label>
+    <input type="file" id="shirtTexture" accept="image/*" /><br/><br/>
+    <label>Material:</label>
+    <select id="materialSelect">
+      <option value="default">Original</option>
+      <option value="phong">MeshPhongMaterial</option>
+      <option value="standard">MeshStandardMaterial</option>
+      <option value="lambert">MeshLambertMaterial</option>
+      <option value="toon">MeshToonMaterial</option>
+    </select> 
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+    import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+
+    const scene = new THREE.Scene();
+    let currentModel = null;
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.5, 3);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.3;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.physicallyCorrectLights = true;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // Luces
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
+    scene.add(hemi);
+
+    const dir = new THREE.DirectionalLight(0xffffff, 1);
+    dir.position.set(5, 10, 7);
+    dir.castShadow = true;
+    dir.shadow.mapSize.width = 2048;
+    dir.shadow.mapSize.height = 2048;
+    dir.shadow.camera.left = -10;
+    dir.shadow.camera.right = 10;
+    dir.shadow.camera.top = 10;
+    dir.shadow.camera.bottom = -10;
+    scene.add(dir);
+
+    const fillLight = new THREE.PointLight(0xffffff, 0.3);
+    fillLight.position.set(1, 2, 2);
+    scene.add(fillLight);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    document.getElementById('hdrInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Validación de tipo y tamaño
+      if (!file.name.toLowerCase().endsWith('.hdr')) {
+        alert('Por favor, selecciona un archivo HDR válido (.hdr)');
+        return;
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        alert('El archivo HDR es demasiado grande. Máximo permitido: 50MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const buffer = ev.target.result;
+        new RGBELoader().setDataType(THREE.HalfFloatType).parse(buffer, undefined, hdrTexture => {
+          hdrTexture.mapping = THREE.EquirectangularReflectionMapping;
+          const pmrem = new THREE.PMREMGenerator(renderer);
+          const envMap = pmrem.fromEquirectangular(hdrTexture).texture;
+          scene.environment = envMap;
+          scene.background = envMap;
+          hdrTexture.dispose();
+          pmrem.dispose();
+        }, err => console.error('Error cargando HDR:', err));
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    const gltfLoader = new GLTFLoader();
+    document.getElementById('fileInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const ext = file.name.toLowerCase().split('.').pop();
+      if (!['glb', 'gltf'].includes(ext)) {
+        alert('Por favor, selecciona un archivo .glb o .gltf válido.');
+        return;
+      }
+      if (file.size > 100 * 1024 * 1024) {
+        alert('El modelo es demasiado grande. Máximo permitido: 100MB');
+        return;
+      }
+
+      const url = URL.createObjectURL(file);
+      gltfLoader.load(url, gltf => {
+        // Limpia todo menos las luces
+        scene.children = scene.children.filter(obj => obj.type.includes('Light'));
+
+        const model = gltf.scene;
+        currentModel = model;
+
+        // Inspección (puedes quitar esto luego)
+        model.traverse(node => {
+          if (node.isMesh) {
+            console.log(node.name, node.material?.name);
+          }
+        });
+
+        // Preparación del modelo
+        model.traverse(node => {
+          if (node.isMesh) {
+            node.castShadow = true;
+            node.receiveShadow = true;
+            const m = node.material;
+            if (m && (m.isMeshStandardMaterial || m.isMeshPhysicalMaterial)) {
+              if (scene.environment) {
+                m.envMap = scene.environment;
+                m.envMapIntensity = 1.2;
+              }
+              m.metalness = 0.4;
+              m.roughness = 0.3;
+              m.needsUpdate = true;
+            }
+          }
+        });
+
+        scene.add(model);
+        URL.revokeObjectURL(url);
+      }, undefined, err => console.error('Error cargando GLB/GLTF:', err));
+    });
+
+    // Cambio dinámico de color de la camisa
+    document.getElementById('shirtColor').addEventListener('input', e => {
+      const color = e.target.value;
+      if (!currentModel) return;
+
+      currentModel.traverse(node => {
+        if (node.isMesh && node.material?.name) {
+          const name = node.material.name;
+          if (name === 'Body_FRONT_2664' || name === 'Sleeves_FRONT_2669') {
+            node.material.color.set(color);
+            node.material.needsUpdate = true;
+          }
+        }
+      });
+    });
+
+    document.getElementById('shirtTexture').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file || !currentModel) return;
+
+  if (!file.type.startsWith('image/')) {
+    alert('Por favor selecciona una imagen válida.');
+    return;
+  }
+
+  const url = URL.createObjectURL(file);
+  const loader = new THREE.TextureLoader();
+
+  loader.load(url, texture => {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1); // Ajusta si deseas repetir el patrón
+
+    currentModel.traverse(node => {
+      if (node.isMesh && node.material?.name) {
+        const name = node.material.name;
+        if (name === 'Body_FRONT_2664' || name === 'Sleeves_FRONT_2669') {
+          node.material.map = texture;
+          node.material.needsUpdate = true;
+        }
+      }
+    });
+
+    URL.revokeObjectURL(url);
+  }, undefined, err => {
+    console.error('Error cargando la textura:', err);
+    alert('No se pudo cargar la textura.');
+  });
+});
+
+
+    document.getElementById('materialSelect').addEventListener('change', e => {
+  const selected = e.target.value;
+  if (!currentModel) return;
+
+  currentModel.traverse(node => {
+    if (node.isMesh) {
+      const oldMat = node.material;
+      let newMat;
+
+      switch (selected) {
+        case 'phong':
+          newMat = new THREE.MeshPhongMaterial({ color: oldMat.color || 0xffffff });
+          break;
+        case 'standard':
+          newMat = new THREE.MeshStandardMaterial({ color: oldMat.color || 0xffffff });
+          break;
+        case 'lambert':
+          newMat = new THREE.MeshLambertMaterial({ color: oldMat.color || 0xffffff });
+          break;
+        case 'toon':
+          newMat = new THREE.MeshToonMaterial({ color: oldMat.color || 0xffffff });
+          break;
+        case 'default':
+        default:
+          return; // No cambiar
+      }
+
+      // Copiar valores útiles si aplica
+      if (oldMat.map) newMat.map = oldMat.map;
+      newMat.name = oldMat.name;
+      newMat.metalness = oldMat.metalness || 0;
+      newMat.roughness = oldMat.roughness || 0.5;
+      newMat.envMap = scene.environment;
+      newMat.envMapIntensity = 1.2;
+      newMat.needsUpdate = true;
+
+      node.material = newMat;
+    }
+  });
+});
+
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
