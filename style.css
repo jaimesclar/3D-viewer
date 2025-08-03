@@ -1,15 +1,71 @@
+/* Reset some default styles */
 body {
   margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
 }
 
+/* Modern sidebar styles */
 #fileInputs {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 10px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 280px;
+  height: 100vh;
+  background-color: #1f1f1f;
+  color: white;
+  padding: 24px;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  overflow-y: auto;
+}
+
+#fileInputs label {
+  display: block;
+  margin-top: 20px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #ddd;
+}
+
+#fileInputs input,
+#fileInputs select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 8px;
   border-radius: 6px;
-  font-family: sans-serif;
+  border: none;
+  background-color: #2e2e2e;
+  color: white;
+  font-size: 14px;
+}
+
+#fileInputs input[type="color"] {
+  padding: 0;
+  height: 40px;
+  background: none;
+  border: none;
+}
+
+#fileInputs select {
+  cursor: pointer;
+}
+
+#fileInputs input[type="file"] {
+  background-color: transparent;
+  color: #aaa;
+  border: none;
+  padding: 4px 0;
+}
+
+#fileInputs input[type="file"]::-webkit-file-upload-button {
+  background: #444;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#fileInputs input[type="file"]::-webkit-file-upload-button:hover {
+  background: #555;
 }
