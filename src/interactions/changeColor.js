@@ -1,21 +1,56 @@
 import { getCurrentModel } from '../loaders/loadModel.js';
+import { getUniqueMaterialNames } from './utils/getUniqueMaterialNames.js';
 
-export function setupColorChanger() {
-  const input = document.getElementById('shirtColor');
+export function setupMultiMaterialColorChanger(containerId = 'materialColorInputs') {
+  const model = getCurrentModel();
+  if (!model) {
+    console.warn('Model not loaded.');
+    return;
+  }
 
-  input.addEventListener('input', e => {
-    const color = e.target.value;
-    const model = getCurrentModel();
-    if (!model) return;
+  const materialNames = getUniqueMaterialNames();
 
-    model.traverse(node => {
-      if (node.isMesh && node.material?.name) {
-        const name = node.material.name;
-        if (name === 'Body_FRONT_2664' || name === 'Sleeves_FRONT_2669') {
-          node.material.color.set(color);
-          node.material.needsUpdate = true;
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.warn(`Container with id '${containerId}' not found.`);
+    return;
+  }
+
+  // Clear previous inputs
+  container.innerHTML = '';
+
+  // For each material name, create a label and input
+  materialNames.forEach(name => {
+    const label = document.createElement('label');
+    label.textContent = name;
+    label.style.display = 'block';
+
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = '#ffffff'; // default white
+    input.style.marginBottom = '8px';
+
+    input.addEventListener('input', e => {
+      const color = e.target.value;
+
+      model.traverse(node => {
+        if (node.isMesh && node.material) {
+          if (Array.isArray(node.material)) {
+            node.material.forEach(mat => {
+              if (mat.name === name) {
+                mat.color.set(color);
+                mat.needsUpdate = true;
+              }
+            });
+          } else if (node.material.name === name) {
+            node.material.color.set(color);
+            node.material.needsUpdate = true;
+          }
         }
-      }
+      });
     });
+
+    container.appendChild(label);
+    container.appendChild(input);
   });
 }

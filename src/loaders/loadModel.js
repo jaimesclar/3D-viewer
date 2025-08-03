@@ -1,5 +1,5 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import * as THREE from 'three';
+import { setupMultiMaterialColorChanger } from '../interactions/changeColor.js';
 
 let currentModel = null;
 const loader = new GLTFLoader();
@@ -48,6 +48,7 @@ export function setupModelLoader(scene) {
 
       scene.add(currentModel);
       URL.revokeObjectURL(url);
+      setupMultiMaterialColorChanger();
     }, undefined, err => console.error('Error cargando GLB/GLTF:', err));
   });
 }
